@@ -18,3 +18,7 @@ subdir('displayless')
 if get_option('tests') == 'all'
   subdir('display')
 endif
+
+# Run in a private D-Bus session and virtual display with disposable folders.
+executable('test-commander-window', 'test-commander-window.c',
+  dependencies: libnautilus_dep, sources: resources)

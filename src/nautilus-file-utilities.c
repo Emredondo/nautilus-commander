@@ -41,7 +41,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#define NAUTILUS_USER_DIRECTORY_NAME "nautilus"
+#define NAUTILUS_USER_DIRECTORY_NAME "nautilus-commander"
 #define DEFAULT_NAUTILUS_DIRECTORY_MODE (0755)
 
 char *
@@ -129,11 +129,11 @@ nautilus_get_scripts_directory_path (void)
     {
         /* g_get_user_data_dir() leads to a different path then expected under
          * the flatpak sandbox */
-        return g_build_filename (g_get_home_dir (), ".local", "share", "nautilus", "scripts", NULL);
+        return g_build_filename (g_get_home_dir (), ".local", "share", "nautilus-commander", "scripts", NULL);
     }
     else
     {
-        return g_build_filename (g_get_user_data_dir (), "nautilus", "scripts", NULL);
+        return g_build_filename (g_get_user_data_dir (), "nautilus-commander", "scripts", NULL);
     }
 }
 

@@ -3209,6 +3209,8 @@ slot_active_changed (NautilusWindowSlot *slot,
     }
 
     priv->active = nautilus_window_slot_get_active (slot);
+    gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (priv->shortcuts),
+                                                priv->active ? GTK_PHASE_BUBBLE : GTK_PHASE_NONE);
 
     if (priv->active)
     {
@@ -9941,6 +9943,7 @@ nautilus_files_view_init (NautilusFilesView *view)
                                                                  gtk_named_action_new ((action)))))
 
     priv->shortcuts = GTK_SHORTCUT_CONTROLLER (gtk_shortcut_controller_new ());
+    gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (priv->shortcuts), GTK_PHASE_NONE);
 
     gtk_shortcut_controller_set_scope (priv->shortcuts, GTK_SHORTCUT_SCOPE_MANAGED);
     gtk_widget_add_controller (GTK_WIDGET (view), GTK_EVENT_CONTROLLER (priv->shortcuts));

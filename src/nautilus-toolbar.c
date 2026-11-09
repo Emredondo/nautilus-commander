@@ -216,8 +216,10 @@ on_location_entry_location_changed (NautilusLocationEntry *entry,
 {
     NautilusToolbar *self = NAUTILUS_TOOLBAR (user_data);
 
+    /* Restoring focus can change the active pane. Keep the intended target. */
+    g_autoptr (NautilusWindowSlot) slot = g_object_ref (self->window_slot);
     nautilus_toolbar_close_location_entry (self);
-    nautilus_window_slot_open_location_full (self->window_slot, location, 0, NULL);
+    nautilus_window_slot_open_location_full (slot, location, 0, NULL);
 }
 
 static void

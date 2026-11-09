@@ -1357,6 +1357,7 @@ nautilus_window_slot_init (NautilusWindowSlot *self)
                                     G_ACTION_GROUP (self->slot_action_group));
 
     self->shortcuts = GTK_SHORTCUT_CONTROLLER (gtk_shortcut_controller_new ());
+    gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (self->shortcuts), GTK_PHASE_NONE);
 
     gtk_shortcut_controller_set_scope (self->shortcuts, GTK_SHORTCUT_SCOPE_MANAGED);
     gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->shortcuts));
@@ -3233,6 +3234,8 @@ nautilus_window_slot_set_active (NautilusWindowSlot *self,
         GtkRoot *window = gtk_widget_get_root (GTK_WIDGET (self));
 
         self->active = active;
+        gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (self->shortcuts),
+                                                    active ? GTK_PHASE_BUBBLE : GTK_PHASE_NONE);
 
         if (active)
         {

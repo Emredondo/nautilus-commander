@@ -1,38 +1,41 @@
-# nautilus
-[![Pipeline status](https://gitlab.gnome.org/GNOME/nautilus/badges/main/pipeline.svg)](https://gitlab.gnome.org/GNOME/nautilus/commits/main)
+# Nautilus Commander 0.1.0 — candidato de desarrollo
 
-This is the project of the [Files](https://apps.gnome.org/Nautilus/) app, a file browser for
-GNOME, internally known by its historical name `nautilus`.
+Fork de GNOME Files 48.3, basado en el código fuente Debian 48.3-2. GPL-3.0-or-later; se conservan los avisos y licencias originales. El icono SVG de submarino se creó para este proyecto y se distribuye con la misma licencia.
 
-## Supported version
-Only the latest version of Files as provided upstream is supported. Try out the [Flatpak nightly](https://welcome.gnome.org/en/app/Nautilus/#installing-a-nightly-build) installation before filling issues to ensure the installation is reproducible and doesn't have downstream changes on it. In case you cannot reproduce in the nightly installation, don't hesitate to file an issue in your distribution. This is to ensure the issue is well triaged and reaches the proper people.
+## Uso
 
-### Update default branch
+Ejecutar `nautilus-commander`. Se inicia con un panel. F3 muestra el segundo panel en la misma ubicación; F3 otra vez oculta el panel inactivo y conserva sus pestañas y navegación. La barra de ubicación, búsqueda y acciones sigue al panel activo. Hacer clic para cambiar de panel. Tab alterna cuando el foco está en una lista de archivos; las entradas de texto y controles conservan su navegación habitual. Las pestañas pertenecen a cada panel. Copiar/cortar/pegar utiliza las acciones originales de Nautilus.
 
-The default development branch of nautilus has been renamed to `main`. To
-update your local checkout, use:
+## Compilación en Debian 13 AMD64
+
+Se necesitan las dependencias de compilación de Nautilus 48.3-2 indicadas en `debian/control`, Meson 1.7 y Ninja. LocalSearch/Tracker y `tracker-test-utils` se necesitan para las pruebas de búsqueda; Xvfb y D-Bus para pruebas de ventana. No se necesitan versiones de GTK ni libadwaita posteriores a Debian 13.
+
+Desde la raíz del código fuente:
+
 ```sh
-git checkout master
-git branch -m master main
-git fetch
-git branch --unset-upstream
-git branch -u origin/main
-git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+meson setup _build --prefix=/usr/lib/nautilus-commander -Dprofile= -Ddocs=false -Dintrospection=false -Dtests=headless -Dbuildtype=debugoptimized
+meson compile -C _build
+meson test -C _build --print-errorlogs
+./commander/package.sh _build ../dist
 ```
 
-## Runtime dependencies
-- [Bubblewrap](https://github.com/projectatomic/bubblewrap) installed. Used for security reasons.
-- [LocalSearch](https://gitlab.gnome.org/GNOME/localsearch) properly set up and with all features enabled. Used for fast search and metadata extraction, starred files and batch renaming.
-- [xdg-user-dirs-gtk](https://gitlab.gnome.org/GNOME/xdg-user-dirs-gtk) installed.  Used to create the default bookmarks and update localization.
+El directorio de compilación debe estar fuera de `/tmp`: LocalSearch excluye ese árbol de la indexación. Las pruebas se deben ejecutar con HOME y directorios XDG descartables, una sesión D-Bus privada y una pantalla Xvfb; nunca sobre archivos personales. La prueba adicional `test/automated/test-commander-window` necesita las variables `COMMANDER_TEST_FIRST` y `COMMANDER_TEST_SECOND`, apuntando a dos directorios descartables existentes. Comprueba las ubicaciones de los paneles, transferencias con el motor original, F3 y cierre de pestañas.
 
-## Discourse
+## Instalación y desinstalación
 
-For more informal discussion we use [GNOME Discourse](https://discourse.gnome.org/tags/nautilus) in the Applications category with the `nautilus` tag. Feel free to open a topic there.
+El paquete instala los componentes privados en `/usr/lib/nautilus-commander` y su lanzador en `/usr/bin/nautilus-commander`. Sus esquemas, servicio de activación e icono tienen nombres propios. No registra asociaciones MIME ni reclama `org.freedesktop.FileManager1`.
 
-## Extensions
+```sh
+sudo apt install ./nautilus-commander_0.1.0~rc1_amd64.deb
+sudo apt remove nautilus-commander
+```
 
-Documentation for the libnautilus-extension API is available [here](https://gnome.pages.gitlab.gnome.org/nautilus/).  Also, if you are interested in developing a Nautilus extension in Python you should refer to the [nautilus-python](https://gnome.pages.gitlab.gnome.org/nautilus-python/) documentation.
+`remove` conserva las preferencias del usuario. Los datos propios se guardan en `~/.config/nautilus-commander` y `~/.local/share/nautilus-commander`, y los ajustes en `/org/nautiluscommander/`. No se borran automáticamente. La instalación original de GNOME Files permanece independiente.
 
-## How to report issues
+## Alcance de la verificación
 
-Report issues to the GNOME [issue tracking system](https://gitlab.gnome.org/GNOME/nautilus/issues).
+Consultar el informe de pruebas entregado con el paquete. Un paquete construido y una prueba virtual no prueban por sí solos todos los criterios de estabilidad en XFCE, Wayland, dispositivos extraíbles o transferencias entre dispositivos. No se debe llamar versión estable a este candidato hasta completar esos ensayos.
+
+## Cambios
+
+- 0.1.0~rc1: identidad y configuración separadas; icono de submarino; contenedor doble con vistas originales; F3 y panel activo; pestañas por panel; ajuste del cierre del panel; pruebas de integración de estado y transferencias. Se mantiene el motor de búsqueda y de operaciones de Nautilus.

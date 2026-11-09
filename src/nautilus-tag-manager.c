@@ -627,7 +627,7 @@ setup_database (NautilusTagManager  *self,
 
     datadir = NAUTILUS_DATADIR;
 
-    store_path = g_build_filename (g_get_user_data_dir (), "nautilus", "tags", NULL);
+    store_path = g_build_filename (g_get_user_data_dir (), "nautilus-commander", "tags", NULL);
     ontology_path = g_build_filename (datadir, "ontology", NULL);
 
     store = g_file_new_for_path (store_path);

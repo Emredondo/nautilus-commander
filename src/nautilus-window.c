@@ -730,6 +730,11 @@ nautilus_window_slot_close (NautilusWindow     *window,
         g_queue_push_head (window->tab_data_queue, data);
     }
 
+    /* Detach the action group while the slot still has a GtkRoot. */
+    if (window->active_slot == slot)
+    {
+        nautilus_window_set_active_slot (window, NULL);
+    }
     remove_slot_from_window (slot, window);
 
     AdwTabView *view = gtk_widget_is_ancestor (GTK_WIDGET (slot), GTK_WIDGET (window->left_tab_view))
@@ -1336,12 +1341,16 @@ nautilus_window_constructed (GObject *self)
 #ifdef GDK_WINDOWING_WAYLAND
     if (GDK_IS_WAYLAND_DISPLAY (gtk_widget_get_display (GTK_WIDGET (window))))
     {
-        adw_tab_bar_setup_extra_drop_target (window->tab_bar,
+        AdwTabBar *bars[] = { window->left_tab_bar, window->right_tab_bar };
+        for (guint i = 0; i < G_N_ELEMENTS (bars); i++)
+        {
+        adw_tab_bar_setup_extra_drop_target (bars[i],
                                              GDK_ACTION_COPY | GDK_ACTION_MOVE,
                                              (GType [3]) {GDK_TYPE_TEXTURE, GDK_TYPE_FILE_LIST, G_TYPE_STRING}, 3);
-        adw_tab_bar_set_extra_drag_preload (window->tab_bar, TRUE);
-        g_signal_connect (window->tab_bar, "extra-drag-value", G_CALLBACK (extra_drag_value_cb), NULL);
-        g_signal_connect (window->tab_bar, "extra-drag-drop", G_CALLBACK (extra_drag_drop_cb), NULL);
+        adw_tab_bar_set_extra_drag_preload (bars[i], TRUE);
+        g_signal_connect (bars[i], "extra-drag-value", G_CALLBACK (extra_drag_value_cb), NULL);
+        g_signal_connect (bars[i], "extra-drag-drop", G_CALLBACK (extra_drag_drop_cb), NULL);
+        }
     }
 #endif
 
@@ -1521,6 +1530,50 @@ nautilus_window_realize (GtkWidget *widget)
 {
     GTK_WIDGET_CLASS (nautilus_window_parent_class)->realize (widget);
     update_cursor (NAUTILUS_WINDOW (widget));
+}
+
+static gboolean
+pane_key_capture (GtkEventControllerKey *controller,
+                  guint keyval, guint keycode, GdkModifierType state,
+                  gpointer user_data)
+{
+    NautilusWindow *window = user_data;
+    GtkWidget *focus = gtk_window_get_focus (GTK_WINDOW (window));
+    GtkWidget *view;
+    gboolean in_listing = FALSE;
+
+    if (!window->dual_pane || window->active_slot == NULL || focus == NULL ||
+        (keyval != GDK_KEY_Tab && keyval != GDK_KEY_ISO_Left_Tab) ||
+        (state & (GDK_CONTROL_MASK | GDK_ALT_MASK | GDK_SUPER_MASK)))
+    {
+        return GDK_EVENT_PROPAGATE;
+    }
+    view = GTK_WIDGET (nautilus_window_slot_get_current_view (window->active_slot));
+    if (view == NULL || !gtk_widget_is_ancestor (focus, view))
+    {
+        return GDK_EVENT_PROPAGATE;
+    }
+    for (GtkWidget *widget = focus; widget != view; widget = gtk_widget_get_parent (widget))
+    {
+        if (GTK_IS_EDITABLE (widget) || GTK_IS_BUTTON (widget) || GTK_IS_DROP_DOWN (widget))
+        {
+            return GDK_EVENT_PROPAGATE;
+        }
+        in_listing |= GTK_IS_GRID_VIEW (widget) || GTK_IS_COLUMN_VIEW (widget) || GTK_IS_LIST_VIEW (widget);
+    }
+    if (in_listing)
+    {
+        AdwTabView *other = window->tab_view == window->left_tab_view ? window->right_tab_view : window->left_tab_view;
+        AdwTabPage *page = adw_tab_view_get_selected_page (other);
+        if (page != NULL)
+        {
+            NautilusWindowSlot *slot = NAUTILUS_WINDOW_SLOT (adw_tab_page_get_child (page));
+            nautilus_window_set_active_slot (window, slot);
+            gtk_widget_grab_focus (GTK_WIDGET (slot));
+            return GDK_EVENT_STOP;
+        }
+    }
+    return GDK_EVENT_PROPAGATE;
 }
 
 static gboolean
@@ -1719,7 +1772,12 @@ panel_event_cb (GtkEventControllerLegacy *controller,
 {
     if (gdk_event_get_event_type (event) == GDK_BUTTON_PRESS)
     {
+        NautilusWindowSlot *previous = window->active_slot;
         activate_pane_for_widget (window, gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller)));
+        if (window->active_slot != NULL && window->active_slot != previous)
+        {
+            gtk_widget_grab_focus (GTK_WIDGET (window->active_slot));
+        }
     }
     return GDK_EVENT_PROPAGATE;
 }
@@ -1789,6 +1847,11 @@ nautilus_window_init (NautilusWindow *window)
     gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (controller), 0);
     g_signal_connect (controller, "pressed",
                       G_CALLBACK (on_click_gesture_pressed), NULL);
+
+    controller = gtk_event_controller_key_new ();
+    gtk_event_controller_set_propagation_phase (controller, GTK_PHASE_CAPTURE);
+    g_signal_connect (controller, "key-pressed", G_CALLBACK (pane_key_capture), window);
+    gtk_widget_add_controller (GTK_WIDGET (window), controller);
 
     controller = gtk_event_controller_key_new ();
     gtk_widget_add_controller (GTK_WIDGET (window), controller);
