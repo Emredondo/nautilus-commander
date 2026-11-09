@@ -74,6 +74,19 @@
     <child schema="org.nautiluscommander.icon-view" name="icon-view"/>
     <child schema="org.nautiluscommander.list-view" name="list-view"/>
     <child schema="org.nautiluscommander.window-state" name="window-state"/>
+    <child schema="org.nautiluscommander.file-chooser" name="file-chooser"/>
+  </schema>
+
+  <!-- These two preferences were shared with GTK's file chooser in Nautilus. -->
+  <schema path="/org/nautiluscommander/file-chooser/" id="org.nautiluscommander.file-chooser">
+    <key name="show-hidden" type="b">
+      <default>false</default>
+      <summary>Show hidden files</summary>
+    </key>
+    <key name="sort-directories-first" type="b">
+      <default>true</default>
+      <summary>Show folders first</summary>
+    </key>
   </schema>
 
   <schema path="/org/nautiluscommander/preferences/" id="org.nautiluscommander.preferences" gettext-domain="nautilus">
