@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#ffd878"/>
+      <stop offset="1" stop-color="#d58d25"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#bceeff"/>
+      <stop offset="1" stop-color="#3488a4"/>
+    </linearGradient>
+  </defs>
+  <path d="M104 65l11-12v35l-11-11z" fill="#ad6f23" stroke="#684a25" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M55 49V32a5 5 0 015-5h14a5 5 0 015 5v17" fill="#dea23b" stroke="#765126" stroke-width="3"/>
+  <path d="M69 28v-9h12" fill="none" stroke="#765126" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M29 50h61c15 0 23 9 23 22s-8 22-23 22H40C22 94 13 86 13 73c0-12 6-19 16-23z" fill="url(#hull)" stroke="#765126" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M19 80c5 8 14 10 23 10h47c10 0 16-3 20-9" fill="none" stroke="#a6671f" stroke-width="3" opacity=".55"/>
+  <circle cx="39" cy="70" r="10" fill="#825a2b"/>
+  <circle cx="39" cy="70" r="7" fill="url(#glass)"/>
+  <circle cx="66" cy="70" r="10" fill="#825a2b"/>
+  <circle cx="66" cy="70" r="7" fill="url(#glass)"/>
+  <circle cx="91" cy="70" r="10" fill="#825a2b"/>
+  <circle cx="91" cy="70" r="7" fill="url(#glass)"/>
+  <path d="M34 67l3-2M61 67l3-2M86 67l3-2" fill="none" stroke="#e6faff" stroke-width="2" stroke-linecap="round"/>
+</svg>
