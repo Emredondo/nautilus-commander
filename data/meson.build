@@ -1,16 +1,8 @@
 icondir = join_paths('icons', 'hicolor', 'scalable', 'apps')
 install_data(
-  join_paths(icondir, 'org.gnome.Nautilus' + profile + '.svg'),
+  join_paths(icondir, 'org.nautiluscommander.NautilusCommander.svg'),
   install_dir: join_paths(datadir, icondir),
   rename: '@0@.svg'.format(application_id)
-)
-
-icondir = join_paths('icons', 'hicolor', 'symbolic', 'apps')
-
-install_data(
-  join_paths(icondir, 'org.gnome.Nautilus-symbolic.svg'),
-  install_dir: join_paths(datadir, icondir),
-  rename: '@0@-symbolic.svg'.format(application_id)
 )
 
 po_dir = join_paths(meson.project_source_root(), 'po')
@@ -83,13 +75,6 @@ service_conf.set('bindir', join_paths(prefix, bindir))
 configure_file(
   input: 'org.gnome.Nautilus.service.in',
   output: '@0@.service'.format(application_id),
-  configuration: service_conf,
-  install_dir: servicedir
-)
-
-configure_file(
-  input: 'org.freedesktop.FileManager1.service.in',
-  output: 'org.freedesktop.FileManager1.service',
   configuration: service_conf,
   install_dir: servicedir
 )

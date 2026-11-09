@@ -1251,11 +1251,9 @@ nautilus_application_dbus_register (GApplication     *app,
         return FALSE;
     }
 
+    /* Do not claim org.freedesktop.FileManager1 from the system file manager.
+     * The local skeleton is retained for existing window-state bookkeeping. */
     priv->fdb_manager = nautilus_freedesktop_dbus_new ();
-    if (!nautilus_freedesktop_dbus_register (priv->fdb_manager, connection, error))
-    {
-        return FALSE;
-    }
 
     if (g_strcmp0 (g_getenv ("RUNNING_TESTS"), "TRUE") != 0)
     {
@@ -1294,7 +1292,6 @@ nautilus_application_dbus_unregister (GApplication    *app,
 
     if (priv->fdb_manager)
     {
-        nautilus_freedesktop_dbus_unregister (priv->fdb_manager);
         g_clear_object (&priv->fdb_manager);
     }
 

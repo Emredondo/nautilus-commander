@@ -41,7 +41,7 @@
         <attribute name="action">app.help</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_About Files</attribute>
+        <attribute name="label" translatable="yes">_About Nautilus Commander</attribute>
         <attribute name="action">app.about</attribute>
       </item>
     </section>
@@ -120,7 +120,7 @@
                         </child>
                         <property name="title-widget">
                           <object class="AdwWindowTitle">
-                            <property name="title" translatable="yes">Files</property>
+                            <property name="title" translatable="yes">Nautilus Commander</property>
                           </object>
                         </property>
                         <child type="end">

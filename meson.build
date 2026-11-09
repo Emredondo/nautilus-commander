@@ -149,7 +149,7 @@ if get_option('profile') == 'Devel'
   name_suffix = ' (Development Snapshot)'
 endif
 
-application_id = 'org.gnome.Nautilus' + profile
+application_id = 'org.nautiluscommander.NautilusCommander' + profile
 
 if profile == ''
   # Example: 40.0
