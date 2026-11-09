@@ -68,6 +68,7 @@ static void nautilus_window_back_or_forward (NautilusWindow *window,
                                              guint           distance);
 static void nautilus_window_sync_location_widgets (NautilusWindow *window);
 static void update_cursor (NautilusWindow *window);
+static void update_pane_indicator (NautilusWindow *window);
 
 /* Sanity check: highest mouse button value I could find was 14. 5 is our
  * lower threshold (well-documented to be the one of the button events for the
@@ -83,8 +84,18 @@ struct _NautilusWindow
 
     GMenuModel *undo_redo_section;
 
+    /* tab_view and tab_bar point to the active pane. The template owns both. */
     AdwTabView *tab_view;
     AdwTabBar *tab_bar;
+    AdwTabView *left_tab_view;
+    AdwTabView *right_tab_view;
+    AdwTabBar *left_tab_bar;
+    AdwTabBar *right_tab_bar;
+    GtkWidget *left_panel;
+    GtkWidget *right_panel;
+    GtkPaned *paned;
+    gboolean dual_pane;
+    gboolean changing_panels;
     AdwTabPage *menu_page;
 
     GList *slots;
@@ -165,7 +176,30 @@ action_close_current_view (GSimpleAction *action,
 
     if (adw_tab_view_get_n_pages (window->tab_view) <= 1)
     {
-        nautilus_window_close (window);
+        AdwTabView *other = window->tab_view == window->left_tab_view
+                            ? window->right_tab_view : window->left_tab_view;
+        if (window->dual_pane && adw_tab_view_get_n_pages (other) > 0)
+        {
+            GtkWidget *closing_panel = window->tab_view == window->left_tab_view
+                                       ? window->left_panel : window->right_panel;
+            NautilusWindowSlot *slot = NAUTILUS_WINDOW_SLOT (adw_tab_page_get_child (page));
+            AdwTabPage *other_page = adw_tab_view_get_selected_page (other);
+            NautilusWindowSlot *other_slot = g_object_ref (NAUTILUS_WINDOW_SLOT (adw_tab_page_get_child (other_page)));
+
+            window->changing_panels = TRUE;
+            window->dual_pane = FALSE;
+            nautilus_window_slot_close (window, slot);
+            gtk_widget_set_visible (closing_panel, FALSE);
+            nautilus_window_set_active_slot (window, other_slot);
+            gtk_widget_grab_focus (GTK_WIDGET (other_slot));
+            window->changing_panels = FALSE;
+            update_pane_indicator (window);
+            g_object_unref (other_slot);
+        }
+        else
+        {
+            nautilus_window_close (window);
+        }
         return;
     }
 
@@ -337,7 +371,16 @@ tab_view_notify_selected_page_cb (AdwTabView     *tab_view,
     NautilusWindowSlot *slot;
     GtkWidget *widget;
 
+    if (tab_view != window->tab_view)
+    {
+        return;
+    }
+
     page = adw_tab_view_get_selected_page (tab_view);
+    if (page == NULL)
+    {
+        return;
+    }
     widget = adw_tab_page_get_child (page);
 
     g_assert (widget != NULL);
@@ -689,9 +732,11 @@ nautilus_window_slot_close (NautilusWindow     *window,
 
     remove_slot_from_window (slot, window);
 
-    page = adw_tab_view_get_page (window->tab_view, GTK_WIDGET (slot));
+    AdwTabView *view = gtk_widget_is_ancestor (GTK_WIDGET (slot), GTK_WIDGET (window->left_tab_view))
+                       ? window->left_tab_view : window->right_tab_view;
+    page = adw_tab_view_get_page (view, GTK_WIDGET (slot));
     /* this will destroy the slot */
-    adw_tab_view_close_page (window->tab_view, page);
+    adw_tab_view_close_page (view, page);
 
     /* If that was the last slot in the window, close the window. */
     if (window->slots == NULL)
@@ -1024,24 +1069,25 @@ action_tab_move_new_window (GSimpleAction *action,
 }
 
 static void
-setup_tab_view (NautilusWindow *window)
+setup_tab_view (NautilusWindow *window,
+                AdwTabView     *view)
 {
-    g_signal_connect (window->tab_view, "close-page",
+    g_signal_connect (view, "close-page",
                       G_CALLBACK (tab_view_close_page_cb),
                       window);
-    g_signal_connect (window->tab_view, "setup-menu",
+    g_signal_connect (view, "setup-menu",
                       G_CALLBACK (tab_view_setup_menu_cb),
                       window);
-    g_signal_connect (window->tab_view, "notify::selected-page",
+    g_signal_connect (view, "notify::selected-page",
                       G_CALLBACK (tab_view_notify_selected_page_cb),
                       window);
-    g_signal_connect (window->tab_view, "create-window",
+    g_signal_connect (view, "create-window",
                       G_CALLBACK (tab_view_create_window_cb),
                       window);
-    g_signal_connect (window->tab_view, "page-attached",
+    g_signal_connect (view, "page-attached",
                       G_CALLBACK (tab_view_page_attached_cb),
                       window);
-    g_signal_connect (window->tab_view, "page-detached",
+    g_signal_connect (view, "page-detached",
                       G_CALLBACK (tab_view_page_detached_cb),
                       window);
 }
@@ -1089,10 +1135,80 @@ extra_drag_drop_cb (AdwTabBar    *self,
     return nautilus_dnd_perform_drop (view, value, action, target_location);
 }
 
+static void
+update_pane_indicator (NautilusWindow *window)
+{
+    gtk_widget_remove_css_class (window->left_panel, "commander-pane-active");
+    gtk_widget_remove_css_class (window->right_panel, "commander-pane-active");
+    if (window->dual_pane)
+    {
+        gtk_widget_add_css_class (window->tab_view == window->left_tab_view
+                                  ? window->left_panel : window->right_panel,
+                                  "commander-pane-active");
+    }
+}
+
+static void
+action_toggle_dual_pane (GSimpleAction *action,
+                         GVariant      *parameter,
+                         gpointer       user_data)
+{
+    NautilusWindow *window = user_data;
+    AdwTabView *other;
+    GtkWidget *other_panel;
+    NautilusWindowSlot *original;
+    GFile *location;
+
+    if (window->active_slot == NULL)
+    {
+        return;
+    }
+
+    other = window->tab_view == window->left_tab_view ? window->right_tab_view : window->left_tab_view;
+    other_panel = other == window->left_tab_view ? window->left_panel : window->right_panel;
+    if (window->dual_pane)
+    {
+        window->dual_pane = FALSE;
+        gtk_widget_set_visible (other_panel, FALSE);
+        update_pane_indicator (window);
+        return;
+    }
+
+    original = g_object_ref (window->active_slot);
+    location = nautilus_window_slot_get_location (original);
+    if (location != NULL)
+    {
+        g_object_ref (location);
+    }
+    else
+    {
+        location = g_file_new_for_path (g_get_home_dir ());
+    }
+
+    window->changing_panels = TRUE;
+    gtk_widget_set_visible (other_panel, TRUE);
+    window->dual_pane = TRUE;
+    if (adw_tab_view_get_n_pages (other) == 0)
+    {
+        NautilusWindowSlot *slot;
+        window->tab_view = other;
+        window->tab_bar = other == window->left_tab_view ? window->left_tab_bar : window->right_tab_bar;
+        slot = nautilus_window_create_and_init_slot (window, NAUTILUS_OPEN_FLAG_NEW_TAB);
+        nautilus_window_slot_open_location_full (slot, location, 0, NULL);
+        nautilus_window_set_active_slot (window, original);
+        gtk_paned_set_position (window->paned, MAX (1, gtk_widget_get_width (GTK_WIDGET (window->paned)) / 2));
+    }
+    window->changing_panels = FALSE;
+    update_pane_indicator (window);
+    g_object_unref (location);
+    g_object_unref (original);
+}
+
 const GActionEntry win_entries[] =
 {
     { .name = "current-location-menu", .activate = action_show_current_location_menu },
     { .name = "new-tab", .activate = action_new_tab },
+    { .name = "toggle-dual-pane", .activate = action_toggle_dual_pane },
     { .name = "undo", .activate = action_undo },
     { .name = "redo", .activate = action_redo },
     /* Only accessible by shorcuts */
@@ -1124,6 +1240,7 @@ nautilus_window_initialize_actions (NautilusWindow *window)
 
     app = g_application_get_default ();
     nautilus_application_set_accelerator (app, "win.new-tab", "<control>t");
+    nautilus_application_set_accelerator (app, "win.toggle-dual-pane", "F3");
     nautilus_application_set_accelerator (app, "win.close-current-view", "<control>w");
 
     nautilus_application_set_accelerator (app, "win.undo", "<control>z");
@@ -1208,7 +1325,8 @@ nautilus_window_constructed (GObject *self)
                                  NAUTILUS_WINDOW_DEFAULT_WIDTH,
                                  NAUTILUS_WINDOW_DEFAULT_HEIGHT);
 
-    setup_tab_view (window);
+    setup_tab_view (window, window->left_tab_view);
+    setup_tab_view (window, window->right_tab_view);
 
     /* Only allow tab DnD in Wayland.  We are using a hack in list-base to
      * get the preferred action which we can not replicate here because we
@@ -1350,6 +1468,20 @@ nautilus_window_set_active_slot (NautilusWindow     *window,
 
     old_slot = nautilus_window_get_active_slot (window);
 
+    if (new_slot != NULL)
+    {
+        if (gtk_widget_is_ancestor (GTK_WIDGET (new_slot), GTK_WIDGET (window->left_tab_view)))
+        {
+            window->tab_view = window->left_tab_view;
+            window->tab_bar = window->left_tab_bar;
+        }
+        else if (gtk_widget_is_ancestor (GTK_WIDGET (new_slot), GTK_WIDGET (window->right_tab_view)))
+        {
+            window->tab_view = window->right_tab_view;
+            window->tab_bar = window->right_tab_bar;
+        }
+    }
+
     if (old_slot == new_slot)
     {
         return;
@@ -1380,6 +1512,7 @@ nautilus_window_set_active_slot (NautilusWindow     *window,
         update_cursor (window);
     }
 
+    update_pane_indicator (window);
     g_object_notify_by_pspec (G_OBJECT (window), properties[PROP_ACTIVE_SLOT]);
 }
 
@@ -1553,6 +1686,59 @@ on_click_gesture_pressed (GtkGestureClick *gesture,
 }
 
 static void
+activate_pane_for_widget (NautilusWindow *window,
+                          GtkWidget      *panel)
+{
+    AdwTabView *view;
+    AdwTabPage *page;
+
+    if (window->changing_panels || !window->dual_pane)
+    {
+        return;
+    }
+
+    view = panel == window->left_panel ? window->left_tab_view : window->right_tab_view;
+    page = adw_tab_view_get_selected_page (view);
+    if (page != NULL)
+    {
+        nautilus_window_set_active_slot (window, NAUTILUS_WINDOW_SLOT (adw_tab_page_get_child (page)));
+    }
+}
+
+static void
+panel_focus_enter_cb (GtkEventControllerFocus *controller,
+                      NautilusWindow          *window)
+{
+    activate_pane_for_widget (window, gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller)));
+}
+
+static gboolean
+panel_event_cb (GtkEventControllerLegacy *controller,
+                GdkEvent                 *event,
+                NautilusWindow           *window)
+{
+    if (gdk_event_get_event_type (event) == GDK_BUTTON_PRESS)
+    {
+        activate_pane_for_widget (window, gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller)));
+    }
+    return GDK_EVENT_PROPAGATE;
+}
+
+static void
+setup_panel_controllers (NautilusWindow *window,
+                         GtkWidget      *panel)
+{
+    GtkEventController *focus = gtk_event_controller_focus_new ();
+    GtkEventController *events = gtk_event_controller_legacy_new ();
+
+    g_signal_connect (focus, "enter", G_CALLBACK (panel_focus_enter_cb), window);
+    gtk_widget_add_controller (panel, focus);
+    gtk_event_controller_set_propagation_phase (events, GTK_PHASE_CAPTURE);
+    g_signal_connect (events, "event", G_CALLBACK (panel_event_cb), window);
+    gtk_widget_add_controller (panel, events);
+}
+
+static void
 nautilus_window_init (NautilusWindow *window)
 {
     GtkWindowGroup *window_group;
@@ -1565,6 +1751,10 @@ nautilus_window_init (NautilusWindow *window)
     g_type_ensure (NAUTILUS_TYPE_PROGRESS_INDICATOR);
     g_type_ensure (NAUTILUS_TYPE_SHORTCUT_MANAGER);
     gtk_widget_init_template (GTK_WIDGET (window));
+    window->tab_view = window->left_tab_view;
+    window->tab_bar = window->left_tab_bar;
+    setup_panel_controllers (window, window->left_panel);
+    setup_panel_controllers (window, window->right_panel);
 
     g_signal_connect (window, "notify::maximized",
                       G_CALLBACK (on_is_maximized_changed), NULL);
@@ -1687,8 +1877,13 @@ nautilus_window_class_init (NautilusWindowClass *class)
     gtk_widget_class_bind_template_child (wclass, NautilusWindow, split_view);
     gtk_widget_class_bind_template_child (wclass, NautilusWindow, places_sidebar);
     gtk_widget_class_bind_template_child (wclass, NautilusWindow, toast_overlay);
-    gtk_widget_class_bind_template_child (wclass, NautilusWindow, tab_view);
-    gtk_widget_class_bind_template_child (wclass, NautilusWindow, tab_bar);
+    gtk_widget_class_bind_template_child (wclass, NautilusWindow, left_tab_view);
+    gtk_widget_class_bind_template_child (wclass, NautilusWindow, right_tab_view);
+    gtk_widget_class_bind_template_child (wclass, NautilusWindow, left_tab_bar);
+    gtk_widget_class_bind_template_child (wclass, NautilusWindow, right_tab_bar);
+    gtk_widget_class_bind_template_child (wclass, NautilusWindow, left_panel);
+    gtk_widget_class_bind_template_child (wclass, NautilusWindow, right_panel);
+    gtk_widget_class_bind_template_child (wclass, NautilusWindow, paned);
     gtk_widget_class_bind_template_child (wclass, NautilusWindow, network_address_bar);
 
     signals[SLOT_ADDED] =
