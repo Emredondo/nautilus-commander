@@ -1,4 +1,4 @@
-# Informe de pruebas — 0.1.0~rc1
+# Informe de pruebas — 0.1.0~rc2
 
 Entorno: Debian 13.7 AMD64, GTK 4.18.6, libadwaita 1.7.6, Meson 1.7.0. Base: Nautilus Debian 48.3-2, firma del descriptor verificada con la clave Debian 7A073AD1AE694FA25BFF62E5235C099D3EB33076.
 
@@ -22,3 +22,5 @@ No se comprobó una sesión interactiva real de XFCE ni Wayland, arrastre entre 
 En sesiones virtuales se observaron avisos de FUSE, portales, directorios XDG y servicios de red no disponibles. Las pruebas del indexador usan su propia sesión y configuración, y pasaron. No se modificaron asociaciones MIME, servicios del escritorio ni paquetes del sistema anfitrión.
 
 Este paquete es un candidato de desarrollo, no una versión estable con todos los criterios de aceptación satisfechos. Las limitaciones anteriores impiden certificar todavía la versión 0.1.0 final.
+
+- En rc2 se probó la acción de terminal en cada uno de los dos paneles con una terminal de prueba que registró el directorio inicial; ambos coincidieron con sus carpetas. La acción para una carpeta seleccionada usa el mismo mecanismo.

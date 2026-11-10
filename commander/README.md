@@ -4,6 +4,8 @@ Fork de GNOME Files 48.3, basado en el código fuente Debian 48.3-2. GPL-3.0-or-
 
 ## Uso
 
+El menú contextual de una carpeta o del fondo ofrece «Abrir una terminal aquí». En carpetas locales utiliza la terminal predeterminada de Debian; también conserva la integración con GNOME Console para ubicaciones compatibles.
+
 Ejecutar `nautilus-commander`. Se inicia con un panel. F3 muestra el segundo panel en la misma ubicación; F3 otra vez oculta el panel inactivo y conserva sus pestañas y navegación. La barra de ubicación, búsqueda y acciones sigue al panel activo. Hacer clic para cambiar de panel. Tab alterna cuando el foco está en una lista de archivos; las entradas de texto y controles conservan su navegación habitual. Las pestañas pertenecen a cada panel. Copiar/cortar/pegar utiliza las acciones originales de Nautilus.
 
 ## Compilación en Debian 13 AMD64
@@ -26,7 +28,7 @@ El directorio de compilación debe estar fuera de `/tmp`: LocalSearch excluye es
 El paquete instala los componentes privados en `/usr/lib/nautilus-commander` y su lanzador en `/usr/bin/nautilus-commander`. Sus esquemas, servicio de activación e icono tienen nombres propios. No registra asociaciones MIME ni reclama `org.freedesktop.FileManager1`.
 
 ```sh
-sudo apt install ./nautilus-commander_0.1.0~rc1_amd64.deb
+sudo apt install ./nautilus-commander_0.1.0~rc2_amd64.deb
 sudo apt remove nautilus-commander
 ```
 
@@ -38,4 +40,4 @@ Consultar el informe de pruebas entregado con el paquete. Un paquete construido 
 
 ## Cambios
 
-- 0.1.0~rc1: identidad y configuración separadas; icono de submarino; contenedor doble con vistas originales; F3 y panel activo; pestañas por panel; ajuste del cierre del panel; pruebas de integración de estado y transferencias. Se mantiene el motor de búsqueda y de operaciones de Nautilus.
+- 0.1.0~rc2: identidad y configuración separadas; icono de submarino; contenedor doble con vistas originales; F3 y panel activo; pestañas por panel; ajuste del cierre del panel; pruebas de integración de estado y transferencias. Se mantiene el motor de búsqueda y de operaciones de Nautilus.

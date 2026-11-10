@@ -2536,20 +2536,56 @@ action_new_folder_with_selection (GSimpleAction *action,
     nautilus_files_view_new_folder (NAUTILUS_FILES_VIEW (user_data), TRUE);
 }
 
+static gboolean
+can_open_terminal (NautilusFile *file)
+{
+    g_autoptr (GFile) location = NULL;
+    g_autofree char *path = NULL;
+    g_autofree char *terminal = NULL;
+
+    if (file == NULL)
+        return FALSE;
+    location = nautilus_file_get_location (file);
+    path = g_file_get_path (location);
+    terminal = g_find_program_in_path ("x-terminal-emulator");
+    if (terminal == NULL)
+        terminal = g_find_program_in_path ("xfce4-terminal");
+    return (path != NULL && terminal != NULL) ||
+           nautilus_dbus_launcher_is_available (nautilus_dbus_launcher_get (),
+                                                 NAUTILUS_DBUS_LAUNCHER_CONSOLE);
+}
+
 static void
 real_open_console (NautilusFile      *file,
                    NautilusFilesView *view)
 {
-    GtkRoot *window = gtk_widget_get_root (GTK_WIDGET (view));
-    GVariant *parameters;
-    g_autofree gchar *uri = NULL;
+    g_autoptr (GFile) location = nautilus_file_get_location (file);
+    g_autofree char *path = g_file_get_path (location);
+    g_autofree char *terminal = g_find_program_in_path ("x-terminal-emulator");
+    g_autoptr (GError) error = NULL;
 
-    uri = nautilus_file_get_uri (file);
-    parameters = g_variant_new_parsed ("([%s], @a{sv} {})", uri);
-    nautilus_dbus_launcher_call (nautilus_dbus_launcher_get (),
-                                 NAUTILUS_DBUS_LAUNCHER_CONSOLE,
-                                 "Open",
-                                 parameters, GTK_WINDOW (window));
+    if (terminal == NULL)
+        terminal = g_find_program_in_path ("xfce4-terminal");
+    if (path != NULL && terminal != NULL)
+    {
+        g_autoptr (GSubprocessLauncher) launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
+        g_subprocess_launcher_set_cwd (launcher, path);
+        g_autoptr (GSubprocess) process = g_subprocess_launcher_spawn (launcher, &error, terminal, NULL);
+        if (process == NULL)
+        {
+            AdwDialog *dialog = adw_alert_dialog_new (_("Unable to open a terminal"), error->message);
+            adw_alert_dialog_add_response (ADW_ALERT_DIALOG (dialog), "close", _("_Close"));
+            adw_dialog_present (dialog, GTK_WIDGET (view));
+        }
+        return;
+    }
+    if (nautilus_dbus_launcher_is_available (nautilus_dbus_launcher_get (), NAUTILUS_DBUS_LAUNCHER_CONSOLE))
+    {
+        g_autofree gchar *uri = nautilus_file_get_uri (file);
+        GVariant *parameters = g_variant_new_parsed ("([%s], @a{sv} {})", uri);
+        nautilus_dbus_launcher_call (nautilus_dbus_launcher_get (), NAUTILUS_DBUS_LAUNCHER_CONSOLE,
+                                     "Open", parameters, GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (view))));
+    }
 }
 
 static void
@@ -7993,14 +8029,12 @@ real_update_actions_state (NautilusFilesView *view)
     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
                                  mode == NAUTILUS_MODE_BROWSE &&
                                  list_len_is_one (selection) && nautilus_file_is_directory (selection->data) &&
-                                 nautilus_dbus_launcher_is_available (nautilus_dbus_launcher_get (),
-                                                                      NAUTILUS_DBUS_LAUNCHER_CONSOLE));
+                                 can_open_terminal (selection->data));
     action = g_action_map_lookup_action (G_ACTION_MAP (view_action_group),
                                          "current-directory-console");
     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
                                  mode == NAUTILUS_MODE_BROWSE &&
-                                 nautilus_dbus_launcher_is_available (nautilus_dbus_launcher_get (),
-                                                                      NAUTILUS_DBUS_LAUNCHER_CONSOLE));
+                                 can_open_terminal (priv->directory_as_file));
     action = g_action_map_lookup_action (G_ACTION_MAP (view_action_group),
                                          "properties");
     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),

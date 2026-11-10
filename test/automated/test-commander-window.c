@@ -4,6 +4,7 @@
 #include "nautilus-window-slot.h"
 #include "nautilus-resources.h"
 #include "nautilus-file-operations.h"
+#include <glib/gstdio.h>
 
 static void settle (void)
 {
@@ -44,6 +45,27 @@ int main (int argc, char **argv)
     settle ();
     g_assert_true (g_file_equal (nautilus_window_slot_get_location (left), first));
     g_assert_true (g_file_equal (nautilus_window_slot_get_location (right), second));
+    if (g_getenv ("COMMANDER_TERMINAL_RESULT") != NULL)
+    {
+        NautilusWindowSlot *panes[] = { left, right };
+        GFile *locations[] = { first, second };
+        for (guint i = 0; i < G_N_ELEMENTS (panes); i++)
+        {
+            g_autofree char *expected = g_file_get_path (locations[i]);
+            g_autofree char *actual = NULL;
+            nautilus_window_set_active_slot (window, panes[i]);
+            settle ();
+            GtkWidget *view = GTK_WIDGET (nautilus_window_slot_get_current_view (panes[i]));
+            g_remove (g_getenv ("COMMANDER_TERMINAL_RESULT"));
+            g_assert_true (gtk_widget_activate_action (view, "view.current-directory-console", NULL));
+            settle ();
+            g_assert_true (g_file_get_contents (g_getenv ("COMMANDER_TERMINAL_RESULT"), &actual, NULL, &error));
+            g_assert_no_error (error);
+            g_strchomp (actual);
+            g_assert_cmpstr (actual, ==, expected);
+        }
+        nautilus_window_set_active_slot (window, right);
+    }
     /* Exercise Nautilus' original transfer engine with the actual pane locations. */
     for (int move = 0; move < 2; move++)
     {

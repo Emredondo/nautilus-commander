@@ -12157,3 +12157,6 @@ msgstr "Lista de atajos, puntos de montaje y marcadores comunes."
 #~ msgstr ""
 #~ "Nautilus es un shell gráfico para GNOME que facilita la administración de "
 #~ "sus archivos y el resto de su sistema."
+
+msgid "Open in _Terminal"
+msgstr "Abrir una _terminal aquí"

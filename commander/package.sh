@@ -33,7 +33,7 @@ cp "$source_dir/commander/README.md" "$stage/usr/share/doc/nautilus-commander/RE
 cp "$source_dir/commander/TEST-REPORT.md" "$stage/usr/share/doc/nautilus-commander/TEST-REPORT.md"
 cat > "$stage/DEBIAN/control" <<'CONTROL'
 Package: nautilus-commander
-Version: 0.1.0~rc1
+Version: 0.1.0~rc2
 Architecture: amd64
 Maintainer: Nautilus Commander contributors <nautilus-commander@localhost>
 Section: utils
@@ -44,4 +44,4 @@ Description: GNOME Files fork with independent dual-pane navigation
  a second pane. This release candidate requires desktop validation.
 CONTROL
 printf 'activate-noawait /usr/share/glib-2.0/schemas\nactivate-noawait /usr/share/icons/hicolor\n' > "$stage/DEBIAN/triggers"
-dpkg-deb --root-owner-group --build "$stage" "$out/nautilus-commander_0.1.0~rc1_amd64.deb"
+dpkg-deb --root-owner-group --build "$stage" "$out/nautilus-commander_0.1.0~rc2_amd64.deb"
