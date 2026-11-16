@@ -2,6 +2,23 @@
 
 Fork de GNOME Files 48.3, basado en el código fuente Debian 48.3-2. GPL-3.0-or-later; se conservan los avisos y licencias originales. El icono SVG de submarino se creó para este proyecto y se distribuye con la misma licencia.
 
+## Descargar e instalar
+
+Esta es una **versión candidata de prueba** para Debian 13 AMD64.
+
+- [Descargar el instalador DEB](https://github.com/Emredondo/nautilus-commander/releases/download/v0.1.0-rc2/nautilus-commander_0.1.0.rc2_amd64.deb)
+- [Descargar el código fuente completo](https://github.com/Emredondo/nautilus-commander/releases/download/v0.1.0-rc2/nautilus-commander-source-rc2.tar.gz)
+- [Consultar la versión y sus archivos](https://github.com/Emredondo/nautilus-commander/releases/tag/v0.1.0-rc2)
+- [Explorar el código fuente en GitHub](https://github.com/Emredondo/nautilus-commander/tree/main/src)
+
+Los archivos DEB y de fuentes también están en la lista de archivos de este repositorio. El DEB descargado de la versión se instala desde la carpeta de descargas con:
+
+```sh
+sudo apt install ./nautilus-commander_0.1.0.rc2_amd64.deb
+```
+
+El paquete aún requiere pruebas adicionales; consultar [el informe](commander/TEST-REPORT.md).
+
 ## Uso
 
 El menú contextual de una carpeta o del fondo ofrece «Abrir una terminal aquí». En carpetas locales utiliza la terminal predeterminada de Debian; también conserva la integración con GNOME Console para ubicaciones compatibles.
